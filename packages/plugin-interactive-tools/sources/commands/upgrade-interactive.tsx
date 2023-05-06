@@ -1,5 +1,5 @@
 import {BaseCommand, WorkspaceRequiredError}                                                                                            from '@yarnpkg/cli';
-import {Cache, Configuration, Project, HardDependencies, formatUtils, miscUtils, structUtils, Descriptor, DescriptorHash, StreamReport} from '@yarnpkg/core';
+import {Cache, Configuration, Descriptor, DescriptorHash, formatUtils, HardDependencies, miscUtils, Project, StreamReport, structUtils} from '@yarnpkg/core';
 import * as libuiUtils                                                                                                                  from '@yarnpkg/libui/sources/libuiUtils';
 import type {SubmitInjectedComponent}                                                                                                   from '@yarnpkg/libui/sources/misc/renderForm';
 import {suggestUtils}                                                                                                                   from '@yarnpkg/plugin-essentials';
@@ -69,6 +69,22 @@ export default class UpgradeInteractiveCommand extends BaseCommand {
     //   + 1 empty line
     const VIEWPORT_SIZE = (this.context.stdout as WriteStream).rows - 7;
 
+    const SEMVER_COLORS = [
+      `gray`, // modifier
+      `red`, // major
+      `yellow`, // minor
+      `green`, // patch
+      `magenta`, // rc
+    ];
+
+    const SEMVER_LEGEND = new Map([
+      [`gray`, `modifier`],
+      [`red`, `major`],
+      [`yellow`, `minor`],
+      [`green`, `patch`],
+      [`magenta`, `rc`],
+    ]);
+
     const colorizeRawDiff = (from: string, to: string) => {
       const diff = diffWords(from, to);
       let str = ``;
@@ -96,14 +112,6 @@ export default class UpgradeInteractiveCommand extends BaseCommand {
 
       if (!matchedFrom || !matchedTo)
         return colorizeRawDiff(from, to);
-
-      const SEMVER_COLORS = [
-        `gray`, // modifier
-        `red`, // major
-        `yellow`, // minor
-        `green`, // patch
-        `magenta`, // rc
-      ];
 
       let color: string | null = null;
       let res = ``;
@@ -170,8 +178,13 @@ export default class UpgradeInteractiveCommand extends BaseCommand {
 
     const Prompt = () => {
       return (
-        <Box flexDirection={`row`}>
+        <Box flexDirection={`row`} height={6}>
           <Box flexDirection={`column`} width={49}>
+            <Box flexDirection={`row`}>
+              <Text bold underline color={`gray`}>
+                  Navigation:
+              </Text>
+            </Box>
             <Box marginLeft={1}>
               <Text>
                 Press <Text bold color={`cyanBright`}>{`<up>`}</Text>/<Text bold color={`cyanBright`}>{`<down>`}</Text> to select packages.
@@ -182,8 +195,6 @@ export default class UpgradeInteractiveCommand extends BaseCommand {
                 Press <Text bold color={`cyanBright`}>{`<left>`}</Text>/<Text bold color={`cyanBright`}>{`<right>`}</Text> to select versions.
               </Text>
             </Box>
-          </Box>
-          <Box flexDirection={`column`}>
             <Box marginLeft={1}>
               <Text>
                 Press <Text bold color={`cyanBright`}>{`<enter>`}</Text> to install.
@@ -195,6 +206,23 @@ export default class UpgradeInteractiveCommand extends BaseCommand {
               </Text>
             </Box>
           </Box>
+          <Box flexDirection={`column`} width={30}>
+            <Box flexDirection={`row`}>
+              <Text bold underline color={`gray`}>
+                  Color Legend:
+              </Text>
+            </Box>
+            {Array.from(SEMVER_LEGEND.entries()).map(([color, value]) =>
+              (<Box flexDirection={`row`}>
+                <Box width={14}>
+                  <Text bold color={color} paddingRight={`1`}>{`"<${color}>"`}:</Text>
+                </Box>
+                <Box>
+                  <Text>{value}</Text>
+                </Box>
+              </Box>),
+            )}
+          </Box>
         </Box>
       );
     };
@@ -204,7 +232,8 @@ export default class UpgradeInteractiveCommand extends BaseCommand {
         <Box flexDirection={`row`} paddingTop={1} paddingBottom={1}>
           <Box width={50}>
             <Text bold>
-              <Text color={`greenBright`}>?</Text> Pick the packages you want to upgrade.
+              <Text color={`greenBright`}>?</Text>
+              Pick the packages you want to upgrade.
             </Text>
           </Box>
           <Box width={17}><Text bold underline color={`gray`}>Current</Text></Box>
@@ -333,7 +362,7 @@ export default class UpgradeInteractiveCommand extends BaseCommand {
         return structUtils.stringifyDescriptor(descriptor);
       });
 
-      return <Box flexDirection={`column`}>
+      return <Box flexDirection={`column`} overflowY={`hidden`}>
         <Prompt/>
         <Header/>
         <UpgradeEntries dependencies={sortedDependencies} />
